@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旋转液体测量重力加速度 - 智能教学助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+        .tab-inactive { color: #6b7280; }
+        .tab-inactive:hover { color: #374151; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .input-field { 
+            border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; 
+            width: 100%; transition: border-color 0.2s; 
+        }
+        .input-field:focus { outline: none; border-color: #2563eb; ring: 2px solid #bfdbfe; }
+        .btn-primary { 
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; 
+            padding: 10px 24px; border-radius: 8px; font-weight: 500; 
+            transition: transform 0.1s, box-shadow 0.2s; 
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .result-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 16px; border-radius: 8px; }
+        .formula { font-family: 'Times New Roman', serif; font-style: italic; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+        canvas { max-width: 100%; }
+        .chat-message { padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; max-width: 85%; }
+        .chat-user { background: #2563eb; color: white; margin-left: auto; }
+        .chat-ai { background: #f3f4f6; color: #1f2937; }
+        .knowledge-tag { display: inline-block; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 6px; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">旋转液体测量重力加速度</h1>
+                    <p class="text-sm text-gray-500 mt-1">智能教学助手 · 原理可视化 · 数据计算 · AI答疑</p>
+                </div>
+                <div class="hidden md:block text-right">
+                    <div class="text-xs text-gray-400">数字化实验教学平台</div>
+                    <div class="text-xs text-blue-600 font-medium">Physics Teaching Assistant</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex space-x-8 overflow-x-auto">
+                <button onclick="switchTab('visual')" id="tab-visual" class="tab-active py-4 px-2 whitespace-nowrap transition-colors">
+                    📐 原理可视化
+                </button>
+                <button onclick="switchTab('calculate')" id="tab-calculate" class="tab-inactive py-4 px-2 whitespace-nowrap transition-colors">
+                    🧮 实验数据计算
+                </button>
+                <button onclick="switchTab('ai')" id="tab-ai" class="tab-inactive py-4 px-2 whitespace-nowrap transition-colors">
+                    🤖 AI智能答疑
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Tab 1: Visualization -->
+        <div id="panel-visual" class="tab-panel">
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Controls -->
+                <div class="card p-6">
+                    <h2 class="text-lg font-bold mb-4 flex items-center">
+                        <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-2 text-sm">1</span>
+                        参数调节
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">重力加速度 g (m/s²)</label>
+                            <input type="range" id="vis-g" min="9.7" max="9.9" step="0.001" value="9.794" 
+                                   class="w-full" oninput="updateVisFromSliders()">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>9.700</span>
+                                <span id="vis-g-val" class="font-bold text-blue-600">9.794</span>
+                                <span>9.900</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">转速 n (r/min)</label>
+                            <input type="range" id="vis-n" min="50" max="300" step="1" value="120" 
+                                   class="w-full" oninput="updateVisFromSliders()">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>50</span>
+                                <span id="vis-n-val" class="font-bold text-blue-600">120</span>
+                                <span>300</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">容器半径 R (cm)</label>
+                            <input type="range" id="vis-R" min="5" max="15" step="0.1" value="10.0" 
+                                   class="w-full" oninput="updateVisFromSliders()">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>5</span>
+                                <span id="vis-R-val" class="font-bold text-blue-600">10.0</span>
+                                <span>15</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">静止液面高度 h (cm)</label>
+                            <input type="range" id="vis-h" min="5" max="20" step="0.1" value="12.0" 
+                                   class="w-full" oninput="updateVisFromSliders()">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>5</span>
+                                <span id="vis-h-val" class="font-bold text-blue-600">12.0</span>
+                                <span>20</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="show-laser" checked onchange="drawVisualization()" class="rounded text-blue-600">
+                                <span class="text-sm text-gray-700">显示激光斜率法光路</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="show-keypoint" checked onchange="drawVisualization()" class="rounded text-blue-600">
+                                <span class="text-sm text-gray-700">标出 x = R/√2 关键点</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <div class="card p-6 lg:col-span-2">
+                    <h2 class="text-lg font-bold mb-4 flex items-center">
+                        <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-2 text-sm">2</span>
+                        抛物面实时演示
+                    </h2>
+                    <canvas id="visCanvas" width="700" height="450" class="w-full border rounded-lg bg-white"></canvas>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        <div class="bg-blue-50 p-3 rounded-lg text-center">
+                            <div class="text-xs text-gray-500">角速度 ω</div>
+                            <div id="info-omega" class="text-sm font-bold text-blue-700">-- rad/s</div>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg text-center">
+                            <div class="text-xs text-gray-500">最高-最低高度差 Δh</div>
+                            <div id="info-dh" class="text-sm font-bold text-blue-700">-- cm</div>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg text-center">
+                            <div class="text-xs text-gray-500">x=R/√2 处高度</div>
+                            <div id="info-hmid" class="text-sm font-bold text-blue-700">-- cm</div>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg text-center">
+                            <div class="text-xs text-gray-500">液面倾角 θ</div>
+                            <div id="info-theta" class="text-sm font-bold text-blue-700">-- °</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theory Cards -->
+            <div class="grid md:grid-cols-3 gap-6 mt-6">
+                <div class="card p-5">
+                    <h3 class="font-bold text-gray-900 mb-2">核心结论一</h3>
+                    <p class="text-sm text-gray-600 mb-2">旋转液体表面为绕转轴旋转的抛物面：</p>
+                    <div class="formula text-center text-lg">y = y₀ + ω²x²/(2g)</div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="font-bold text-gray-900 mb-2">核心结论二</h3>
+                    <p class="text-sm text-gray-600 mb-2">无论转速如何，<span class="formula">x = R/√2</span> 处液面高度恒等于静止液面高度 h。</p>
+                </div>
+                <div class="card p-5">
+                    <h3 class="font-bold text-gray-900 mb-2">教学方法</h3>
+                    <p class="text-sm text-gray-600">通过微元法建立模型，利用非惯性系中液体微元受力平衡推导抛物面方程。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Calculation -->
+        <div id="panel-calculate" class="tab-panel hidden">
+            <div class="grid lg:grid-cols-2 gap-6">
+                <!-- Height Difference Method -->
+                <div class="card p-6">
+                    <h2 class="text-lg font-bold mb-4 text-blue-700">方法一：高度差法</h2>
+                    <p class="text-sm text-gray-600 mb-4">测量转轴处最低点与容器边缘最高点的高度差 Δh。</p>
+                    
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">转速 n (r/min)</label>
+                                <input type="number" id="hd-n" class="input-field" value="120" step="0.1">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">圆筒内径 D (cm)</label>
+                                <input type="number" id="hd-D" class="input-field" value="10.0" step="0.01">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">高度差 Δh (cm)</label>
+                            <input type="number" id="hd-dh" class="input-field" value="2.02" step="0.01">
+                        </div>
+                        <button onclick="calculateHeightDiff()" class="btn-primary w-full">计算重力加速度</button>
+                    </div>
+
+                    <div id="hd-result" class="result-box mt-4 hidden">
+                        <div class="text-sm font-medium text-gray-700 mb-1">计算结果</div>
+                        <div class="text-2xl font-bold text-blue-700 mb-2"><span id="hd-g">--</span> m/s²</div>
+                        <div class="text-xs text-gray-600">相对误差：<span id="hd-error">--</span>%（以 g=9.794 m/s² 为参考）</div>
+                        <div class="text-xs text-gray-500 mt-1">公式：g = π²n²D² / (720000·Δh)</div>
+                    </div>
+                </div>
+
+                <!-- Slope Method -->
+                <div class="card p-6">
+                    <h2 class="text-lg font-bold mb-4 text-blue-700">方法二：斜率法（激光反射）</h2>
+                    <p class="text-sm text-gray-600 mb-4">激光打在 x=R/√2 处，测量反射光点间距 d。</p>
+                    
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">转速 n (r/min)</label>
+                                <input type="number" id="sm-n" class="input-field" value="80" step="0.1">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">圆筒内径 D (cm)</label>
+                                <input type="number" id="sm-D" class="input-field" value="10.0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">光点间距 d (cm)</label>
+                                <input type="number" id="sm-d" class="input-field" value="10.80" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">屏幕高度 H (cm)</label>
+                                <input type="number" id="sm-H" class="input-field" value="20.0" step="0.01">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">静止液面高度 h (cm)</label>
+                            <input type="number" id="sm-h" class="input-field" value="12.0" step="0.01">
+                        </div>
+                        <button onclick="calculateSlope()" class="btn-primary w-full">计算重力加速度</button>
+                    </div>
+
+                    <div id="sm-result" class="result-box mt-4 hidden">
+                        <div class="text-sm font-medium text-gray-700 mb-1">计算结果</div>
+                        <div class="text-2xl font-bold text-blue-700 mb-2"><span id="sm-g">--</span> m/s²</div>
+                        <div class="text-xs text-gray-600">相对误差：<span id="sm-error">--</span>%（以 g=9.794 m/s² 为参考）</div>
+                        <div class="text-xs text-gray-500 mt-1">中间量：θ = ½ arctan(d/H)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multi-group Data Fitting -->
+            <div class="card p-6 mt-6">
+                <h2 class="text-lg font-bold mb-4 text-blue-700">📊 多组数据线性拟合（最小二乘法）</h2>
+                <p class="text-sm text-gray-600 mb-4">输入多组转速与对应 Δh，程序自动用最小二乘法拟合求 g。</p>
+                
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-medium text-gray-700">数据输入</label>
+                            <button onclick="addDataRow()" class="text-sm text-blue-600 hover:text-blue-800">+ 添加一组</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="p-2 text-left">组别</th>
+                                        <th class="p-2 text-left">转速 n (r/min)</th>
+                                        <th class="p-2 text-left">Δh (cm)</th>
+                                        <th class="p-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fit-table-body">
+                                    <tr>
+                                        <td class="p-2">1</td>
+                                        <td class="p-2"><input type="number" class="input-field fit-n" value="100" step="1"></td>
+                                        <td class="p-2"><input type="number" class="input-field fit-dh" value="1.40" step="0.01"></td>
+                                        <td class="p-2"><button onclick="removeDataRow(this)" class="text-red-500 text-xs">删除</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2">2</td>
+                                        <td class="p-2"><input type="number" class="input-field fit-n" value="120" step="1"></td>
+                                        <td class="p-2"><input type="number" class="input-field fit-dh" value="2.02" step="0.01"></td>
+                                        <td class="p-2"><button onclick="removeDataRow(this)" class="text-red-500 text-xs">删除</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2">3</td>
+                                        <td class="p-2"><input type="number" class="input-field fit-n" value="140" step="1"></td>
+                                        <td class="p-2"><input type="number" class="input-field fit-dh" value="2.74" step="0.01"></td>
+                                        <td class="p-2"><button onclick="removeDataRow(this)" class="text-red-500 text-xs">删除</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2">4</td>
+                                        <td class="p-2"><input type="number" class="input-field fit-n" value="160" step="1"></td>
+                                        <td class="p-2"><input type="number" class="input-field fit-dh" value="3.58" step="0.01"></td>
+                                        <td class="p-2"><button onclick="removeDataRow(this)" class="text-red-500 text-xs">删除</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">圆筒内径 D (cm)</label>
+                                <input type="number" id="fit-D" class="input-field" value="10.0" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">参考 g (m/s²)</label>
+                                <input type="number" id="fit-gref" class="input-field" value="9.794" step="0.001">
+                            </div>
+                        </div>
+                        <button onclick="calculateFit()" class="btn-primary w-full mt-3">执行线性拟合</button>
+                    </div>
+                    
+                    <div>
+                        <canvas id="fitChart" height="250"></canvas>
+                        <div id="fit-result" class="result-box mt-3 hidden">
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-600">拟合斜率 k：</span>
+                                    <span id="fit-slope" class="font-bold text-blue-700">--</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">拟合优度 R²：</span>
+                                    <span id="fit-r2" class="font-bold text-blue-700">--</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">重力加速度 g：</span>
+                                    <span id="fit-g" class="font-bold text-blue-700 text-lg">--</span> m/s²
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">相对误差：</span>
+                                    <span id="fit-error" class="font-bold text-blue-700">--</span>%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: AI Q&A -->
+        <div id="panel-ai" class="tab-panel hidden">
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Question Input -->
+                <div class="lg:col-span-2 card p-6">
+                    <h2 class="text-lg font-bold mb-4 text-blue-700">🤖 AI 实验答疑助手</h2>
+                    <p class="text-sm text-gray-600 mb-4">基于本次旋转液体实验的PPT、讲课稿和研究报告构建知识库，可回答实验原理、操作、数据处理、误差分析等问题。</p>
+                    
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4 h-80 overflow-y-auto" id="chat-box">
+                        <div class="chat-message chat-ai">
+                            <div class="font-medium mb-1">实验助手</div>
+                            你好！我是旋转液体测重力加速度实验的AI助手。你可以问我关于实验原理、操作步骤、数据处理、误差分析等问题，例如：
+                            <br><br>
+                            • 旋转液体表面为什么是抛物面？<br>
+                            • 高度差法和斜率法有什么区别？<br>
+                            • 如何减小实验误差？<br>
+                            • x=R/√2 这个结论怎么用？
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <input type="text" id="user-question" class="input-field flex-1" placeholder="输入你的问题..." 
+                               onkeypress="if(event.key==='Enter') askQuestion()">
+                        <button onclick="askQuestion()" class="btn-primary whitespace-nowrap">发送</button>
+                    </div>
+                </div>
+
+                <!-- Quick Questions -->
+                <div class="card p-6">
+                    <h3 class="font-bold mb-4">常见问题</h3>
+                    <div class="space-y-2">
+                        <button onclick="setQuestion('旋转液体表面为什么是抛物面？')" class="w-full text-left text-sm p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors">
+                            旋转液体表面为什么是抛物面？
+                        </button>
+                        <button onclick="setQuestion('高度差法和斜率法哪个更精确？')" class="w-full text-left text-sm p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors">
+                            高度差法和斜率法哪个更精确？
+                        </button>
+                        <button onclick="setQuestion('实验中主要误差来源有哪些？')" class="w-full text-left text-sm p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors">
+                            实验中主要误差来源有哪些？
+                        </button>
+                        <button onclick="setQuestion('如何优化实验装置减小误差？')" class="w-full text-left text-sm p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors">
+                            如何优化实验装置减小误差？
+                        </button>
+                        <button onclick="setQuestion('什么浓度范围的稀乙醇溶液误差最小？')" class="w-full text-left text-sm p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors">
+                            稀乙醇溶液浓度如何选择？
+                        </button>
+                        <button onclick="setQuestion('最小二乘法处理数据的原理是什么？')" class="w-full text-left text-sm p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors">
+                            最小二乘法处理数据的原理？
+                        </button>
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <h4 class="font-bold text-sm text-blue-800 mb-2">知识库覆盖</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="knowledge-tag">抛物面推导</span>
+                            <span class="knowledge-tag">微元法</span>
+                            <span class="knowledge-tag">高度差法</span>
+                            <span class="knowledge-tag">斜率法</span>
+                            <span class="knowledge-tag">最小二乘法</span>
+                            <span class="knowledge-tag">误差分析</span>
+                            <span class="knowledge-tag">Origin</span>
+                            <span class="knowledge-tag">量子重力仪</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+            <p>旋转液体测量重力加速度 · 智能教学助手</p>
+            <p class="mt-1">本工具为讲课演示设计，计算结果仅供参考</p>
+        </div>
+    </footer>
+
+    <script>
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+            document.getElementById('panel-' + tabName).classList.remove('hidden');
+            
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+            document.getElementById('tab-' + tabName).classList.remove('tab-inactive');
+            document.getElementById('tab-' + tabName).classList.add('tab-active');
+            
+            if (tabName === 'visual') {
+                setTimeout(drawVisualization, 10);
+            }
+        }
+
+        // ==================== Visualization Module ====================
+        function updateVisFromSliders() {
+            document.getElementById('vis-g-val').textContent = document.getElementById('vis-g').value;
+            document.getElementById('vis-n-val').textContent = document.getElementById('vis-n').value;
+            document.getElementById('vis-R-val').textContent = document.getElementById('vis-R').value;
+            document.getElementById('vis-h-val').textContent = document.getElementById('vis-h').value;
+            drawVisualization();
+        }
+
+        function drawVisualization() {
+            const canvas = document.getElementById('visCanvas');
+            const ctx = canvas.getContext('2d');
+            const g = parseFloat(document.getElementById('vis-g').value);
+            const n = parseFloat(document.getElementById('vis-n').value);
+            const R_cm = parseFloat(document.getElementById('vis-R').value);
+            const h_cm = parseFloat(document.getElementById('vis-h').value);
+            const showLaser = document.getElementById('show-laser').checked;
+            const showKey = document.getElementById('show-keypoint').checked;
+
+            const omega = 2 * Math.PI * n / 60; // rad/s
+            const R = R_cm / 100; // m
+            const h = h_cm / 100; // m
+
+            // Calculate y0 from volume conservation
+            // V = πR²h = ∫0^R 2πx·y(x) dx = 2π∫0^R x(y0 + ω²x²/(2g)) dx
+            // = 2π[y0 R²/2 + ω²R⁴/(8g)]
+            // So y0 = h - ω²R²/(4g)
+            const y0 = h - omega * omega * R * R / (4 * g);
+
+            // Surface function: y(x) = y0 + ω²x²/(2g)
+            const y_at = (x) => y0 + omega * omega * x * x / (2 * g);
+            const y_max = y_at(R);
+            const y_min = y0;
+            const dh = y_max - y_min;
+
+            // Canvas setup
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Margins and scaling
+            const padLeft = 80, padRight = 60, padTop = 40, padBottom = 60;
+            const drawW = canvas.width - padLeft - padRight;
+            const drawH = canvas.height - padTop - padBottom;
+            
+            // Determine y range for display
+            const yRangeMin = Math.min(y_min, 0) - 0.02;
+            const yRangeMax = Math.max(y_max, h) + 0.03;
+            const ySpan = yRangeMax - yRangeMin;
+            
+            // x scale: map [-R, R] to horizontal
+            const xScale = drawW / (2.4 * R);
+            // y scale: map y values vertically (y increases upward)
+            const yScale = drawH / (ySpan * 1.2);
+            
+            const cx = padLeft + drawW / 2;
+            const cy = padTop + drawH * 0.85;
+
+            function worldToScreen(x, y) {
+                return {
+                    x: cx + x * xScale,
+                    y: cy - (y - yRangeMin) * yScale
+                };
+            }
+
+            // Draw axes
+            ctx.strokeStyle = '#9ca3af';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // y-axis
+            ctx.moveTo(cx, padTop);
+            ctx.lineTo(cx, canvas.height - padBottom);
+            // x-axis
+            const origin = worldToScreen(0, yRangeMin);
+            ctx.moveTo(padLeft, origin.y);
+            ctx.lineTo(canvas.width - padRight, origin.y);
+            ctx.stroke();
+
+            // Axis labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('x', canvas.width - padRight + 15, origin.y + 4);
+            ctx.fillText('y', cx - 15, padTop + 10);
+            ctx.fillText('O', cx - 12, origin.y + 14);
+
+            // Draw container walls
+            ctx.strokeStyle = '#4b5563';
+            ctx.lineWidth = 3;
+            const leftWallTop = worldToScreen(-R, y_max + 0.01);
+            const leftWallBot = worldToScreen(-R, yRangeMin);
+            const rightWallTop = worldToScreen(R, y_max + 0.01);
+            const rightWallBot = worldToScreen(R, yRangeMin);
+            ctx.beginPath();
+            ctx.moveTo(leftWallTop.x, leftWallTop.y);
+            ctx.lineTo(leftWallBot.x, leftWallBot.y);
+            ctx.moveTo(rightWallTop.x, rightWallTop.y);
+            ctx.lineTo(rightWallBot.x, rightWallBot.y);
+            ctx.stroke();
+
+            // Draw bottom of container
+            ctx.beginPath();
+            ctx.moveTo(leftWallBot.x, leftWallBot.y);
+            ctx.lineTo(rightWallBot.x, rightWallBot.y);
+            ctx.stroke();
+
+            // Draw still water level line (dashed)
+            const stillLevelLeft = worldToScreen(-R, h);
+            const stillLevelRight = worldToScreen(R, h);
+            ctx.strokeStyle = '#10b981';
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(stillLevelLeft.x, stillLevelLeft.y);
+            ctx.lineTo(stillLevelRight.x, stillLevelRight.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Label still water level
+            ctx.fillStyle = '#10b981';
+            ctx.textAlign = 'left';
+            ctx.fillText('静止液面 h', stillLevelRight.x + 8, stillLevelRight.y + 4);
+
+            // Draw parabolic surface
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const steps = 100;
+            for (let i = 0; i <= steps; i++) {
+                const x = -R + (2 * R * i) / steps;
+                const y = y_at(Math.abs(x));
+                const p = worldToScreen(x, y);
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+
+            // Fill liquid
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
+            ctx.beginPath();
+            for (let i = 0; i <= steps; i++) {
+                const x = -R + (2 * R * i) / steps;
+                const y = y_at(Math.abs(x));
+                const p = worldToScreen(x, y);
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            }
+            ctx.lineTo(rightWallBot.x, rightWallBot.y);
+            ctx.lineTo(leftWallBot.x, leftWallBot.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Mark center point and key points
+            const centerP = worldToScreen(0, y0);
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(centerP.x, centerP.y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#dc2626';
+            ctx.textAlign = 'right';
+            ctx.fillText('最低点', centerP.x - 8, centerP.y + 4);
+
+            // Mark x = R/√2 point (show on left side to match textbook convention)
+            if (showKey) {
+                const xKey = -R / Math.sqrt(2);
+                const yKey = y_at(xKey);
+                const keyP = worldToScreen(xKey, yKey);
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(keyP.x, keyP.y, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.fillStyle = '#f59e0b';
+                ctx.textAlign = 'right';
+                ctx.fillText('x=-R/√2', keyP.x - 8, keyP.y + 4);
+                
+                // Draw vertical dashed line to still water level
+                ctx.strokeStyle = '#f59e0b';
+                ctx.setLineDash([3, 3]);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(keyP.x, keyP.y);
+                ctx.lineTo(keyP.x, stillLevelLeft.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Mark highest point
+            const highP = worldToScreen(R, y_max);
+            ctx.fillStyle = '#7c3aed';
+            ctx.beginPath();
+            ctx.arc(highP.x, highP.y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#7c3aed';
+            ctx.textAlign = 'left';
+            ctx.fillText('最高点', highP.x + 8, highP.y + 4);
+
+            // Draw height difference annotation
+            if (dh > 0.001) {
+                const annotX = highP.x + 45;
+                ctx.strokeStyle = '#7c3aed';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(highP.x + 10, highP.y);
+                ctx.lineTo(annotX, highP.y);
+                ctx.lineTo(annotX, centerP.y);
+                ctx.lineTo(highP.x + 10, centerP.y);
+                ctx.stroke();
+                ctx.fillStyle = '#7c3aed';
+                ctx.textAlign = 'center';
+                ctx.fillText('Δh=' + (dh * 100).toFixed(2) + 'cm', annotX + 30, (highP.y + centerP.y) / 2 + 4);
+            }
+
+            // Draw laser slope method
+            if (showLaser) {
+                const x0 = -R / Math.sqrt(2);
+                const yA = y_at(x0);
+                const theta = Math.atan(omega * omega * Math.abs(x0) / g);
+                
+                // Screen position (above container)
+                const screenY = yRangeMax + 0.005;
+                const screenLeft = worldToScreen(-R, screenY);
+                const screenRight = worldToScreen(R, screenY);
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(screenLeft.x, screenLeft.y);
+                ctx.lineTo(screenRight.x, screenRight.y);
+                ctx.stroke();
+                ctx.fillStyle = '#374151';
+                ctx.textAlign = 'center';
+                ctx.fillText('水平屏幕', cx, screenLeft.y - 8);
+
+                // Incident laser parallel to y-axis at x0
+                const pointA = worldToScreen(x0, yA);
+                const pointB = worldToScreen(x0, screenY);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 2]);
+                ctx.beginPath();
+                ctx.moveTo(pointB.x, pointB.y);
+                ctx.lineTo(pointA.x, pointA.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Reflected ray: angle 2θ from vertical, going outward (to the right for left-side x0)
+                const reflectionLen = (screenY - yA) * 1.5;
+                const dx = reflectionLen * Math.sin(2 * theta);
+                const dy = reflectionLen * Math.cos(2 * theta);
+                // In world coords: x increases right, y increases up
+                const xC_world = x0 + dx;
+                const yC_world = yA + dy;
+                const pointC = worldToScreen(xC_world, yC_world);
+                
+                ctx.strokeStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.moveTo(pointA.x, pointA.y);
+                ctx.lineTo(pointC.x, pointC.y);
+                ctx.stroke();
+
+                // Label points
+                ctx.fillStyle = '#ef4444';
+                ctx.textAlign = 'center';
+                ctx.fillText('B', pointB.x, pointB.y - 6);
+                ctx.fillText('A', pointA.x - 10, pointA.y + 4);
+                ctx.fillText('C', pointC.x + 10, pointC.y + 4);
+
+                // Draw angle theta arc between tangent and horizontal
+                const arcRadius = 30;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                // Tangent at x0<0 slopes downward to the left, so angle with +x axis is π - θ (or -θ below horizontal)
+                ctx.arc(pointA.x, pointA.y, arcRadius, -theta, 0, false);
+                ctx.stroke();
+                ctx.fillStyle = '#f59e0b';
+                ctx.font = '11px sans-serif';
+                ctx.fillText('θ', pointA.x + arcRadius + 8, pointA.y - arcRadius / 2);
+                ctx.font = '12px sans-serif';
+            }
+
+            // Update info boxes
+            document.getElementById('info-omega').textContent = omega.toFixed(2) + ' rad/s';
+            document.getElementById('info-dh').textContent = (dh * 100).toFixed(2) + ' cm';
+            document.getElementById('info-hmid').textContent = (y_at(R / Math.sqrt(2)) * 100).toFixed(2) + ' cm';
+            const theta_max = Math.atan(omega * omega * R / g);
+            document.getElementById('info-theta').textContent = (theta_max * 180 / Math.PI).toFixed(1) + '°';
+        }
+
+        // ==================== Calculation Module ====================
+        function calculateHeightDiff() {
+            const n = parseFloat(document.getElementById('hd-n').value);
+            const D = parseFloat(document.getElementById('hd-D').value);
+            const dh = parseFloat(document.getElementById('hd-dh').value);
+            const g_ref = 9.794;
+
+            if (!n || !D || !dh) {
+                alert('请填写完整数据');
+                return;
+            }
+
+            // Formula: g = π² n² D² / (720000 · Δh)  [D, Δh in cm, n in r/min]
+            const g = (Math.PI * Math.PI * n * n * D * D) / (720000 * dh);
+            const error = Math.abs((g - g_ref) / g_ref) * 100;
+
+            document.getElementById('hd-g').textContent = g.toFixed(4);
+            document.getElementById('hd-error').textContent = error.toFixed(2);
+            document.getElementById('hd-result').classList.remove('hidden');
+        }
+
+        function calculateSlope() {
+            const n = parseFloat(document.getElementById('sm-n').value);
+            const D = parseFloat(document.getElementById('sm-D').value);
+            const d = parseFloat(document.getElementById('sm-d').value);
+            const H = parseFloat(document.getElementById('sm-H').value);
+            const h = parseFloat(document.getElementById('sm-h').value);
+            const g_ref = 9.794;
+
+            if (!n || !D || !d || !H || !h) {
+                alert('请填写完整数据');
+                return;
+            }
+
+            const R = D / 2;
+            const x0 = R / Math.sqrt(2);
+            const theta = 0.5 * Math.atan(d / H);
+            const omega = 2 * Math.PI * n / 60;
+            
+            // tan(theta) = ω² x0 / g, x0 in meters -> g in m/s²
+            const g = (omega * omega * (x0 / 100)) / Math.tan(theta);
+            const error = Math.abs((g - g_ref) / g_ref) * 100;
+
+            document.getElementById('sm-g').textContent = g.toFixed(4);
+            document.getElementById('sm-error').textContent = error.toFixed(2);
+            document.getElementById('sm-result').classList.remove('hidden');
+        }
+
+        // ==================== Linear Fitting Module ====================
+        let fitChartInstance = null;
+
+        function addDataRow() {
+            const tbody = document.getElementById('fit-table-body');
+            const rowCount = tbody.rows.length + 1;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="p-2">${rowCount}</td>
+                <td class="p-2"><input type="number" class="input-field fit-n" value="" step="1"></td>
+                <td class="p-2"><input type="number" class="input-field fit-dh" value="" step="0.01"></td>
+                <td class="p-2"><button onclick="removeDataRow(this)" class="text-red-500 text-xs">删除</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function removeDataRow(btn) {
+            const tbody = document.getElementById('fit-table-body');
+            if (tbody.rows.length <= 2) {
+                alert('至少需要两组数据');
+                return;
+            }
+            btn.closest('tr').remove();
+            // Renumber
+            Array.from(tbody.rows).forEach((row, idx) => {
+                row.cells[0].textContent = idx + 1;
+            });
+        }
+
+        function calculateFit() {
+            const D = parseFloat(document.getElementById('fit-D').value);
+            const g_ref = parseFloat(document.getElementById('fit-gref').value);
+            const rows = document.querySelectorAll('#fit-table-body tr');
+            
+            const nValues = [];
+            const dhValues = [];
+            rows.forEach(row => {
+                const n = parseFloat(row.querySelector('.fit-n').value);
+                const dh = parseFloat(row.querySelector('.fit-dh').value);
+                if (!isNaN(n) && !isNaN(dh) && dh > 0) {
+                    nValues.push(n);
+                    dhValues.push(dh);
+                }
+            });
+
+            if (nValues.length < 2) {
+                alert('请至少输入两组有效数据');
+                return;
+            }
+
+            // Linearize: Δh = (π²D²/720000g) · n²
+            // Let X = n², Y = Δh, slope k = π²D²/(720000g)
+            const X = nValues.map(n => n * n);
+            const Y = dhValues;
+            
+            const nPts = X.length;
+            const sumX = X.reduce((a, b) => a + b, 0);
+            const sumY = Y.reduce((a, b) => a + b, 0);
+            const sumXY = X.reduce((total, xi, i) => total + xi * Y[i], 0);
+            const sumX2 = X.reduce((total, xi) => total + xi * xi, 0);
+            
+            const slope = (nPts * sumXY - sumX * sumY) / (nPts * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / nPts;
+            
+            // R²
+            const yMean = sumY / nPts;
+            const ssTot = Y.reduce((total, yi) => total + Math.pow(yi - yMean, 2), 0);
+            const ssRes = Y.reduce((total, yi, i) => total + Math.pow(yi - (slope * X[i] + intercept), 2), 0);
+            const r2 = 1 - ssRes / ssTot;
+            
+            const g = (Math.PI * Math.PI * D * D) / (720000 * slope);
+            const error = Math.abs((g - g_ref) / g_ref) * 100;
+
+            document.getElementById('fit-slope').textContent = slope.toExponential(4);
+            document.getElementById('fit-r2').textContent = r2.toFixed(4);
+            document.getElementById('fit-g').textContent = g.toFixed(4);
+            document.getElementById('fit-error').textContent = error.toFixed(2);
+            document.getElementById('fit-result').classList.remove('hidden');
+
+            // Chart
+            const ctx = document.getElementById('fitChart').getContext('2d');
+            if (fitChartInstance) fitChartInstance.destroy();
+            
+            const xMin = Math.min(...X);
+            const xMax = Math.max(...X);
+            const fitLine = [
+                { x: xMin, y: slope * xMin + intercept },
+                { x: xMax, y: slope * xMax + intercept }
+            ];
+
+            fitChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: '实验数据',
+                        data: X.map((xi, i) => ({ x: xi, y: Y[i] })),
+                        backgroundColor: '#2563eb',
+                        pointRadius: 6
+                    }, {
+                        label: '线性拟合',
+                        data: fitLine,
+                        type: 'line',
+                        borderColor: '#dc2626',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: { display: true, text: 'n² (r/min)²' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Δh (cm)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true }
+                    }
+                }
+            });
+        }
+
+        // ==================== AI Q&A Module ====================
+        const knowledgeBase = [
+            {
+                keywords: ['抛物面', '为什么', '表面', '形状', '曲面', '旋转液体'],
+                answer: '旋转液体表面形成抛物面，是因为在随容器一起转动的非惯性参考系中，液体微元受到重力（竖直向下）和惯性离心力（沿径向向外）的共同作用。由于液面是等势面，液体表面任一点的切线方向与合力方向垂直。通过微元受力分析可得 tanθ = ω²x/g，而 tanθ 又等于液面曲线的斜率 dy/dx，联立后积分得到抛物线方程 y = y₀ + ω²x²/(2g)，因此液面是绕转轴旋转的抛物面。'
+            },
+            {
+                keywords: ['微元法', '推导', '受力分析', '非惯性系', '离心力'],
+                answer: '微元法推导步骤：①在旋转液体中取任一微块P(x,y)；②将旋转容器视为非惯性参考系，液体微元相对容器静止；③分析受力：竖直向下的重力mg、沿径向向外的惯性离心力Fi、周围液体的作用力N（垂直于液面）；④由受力平衡得到 tanθ = ω²x/g；⑤利用 tanθ = dy/dx 联立积分，最终得到抛物面方程。'
+            },
+            {
+                keywords: ['体积守恒', '体积不变', 'y0', '最低点', '静止液面'],
+                answer: '根据旋转前后液体体积不变：静止时体积为 πR²h，旋转时为抛物面体积。将 y = y₀ + ω²x²/(2g) 代入积分并化简，可得 y₀ = h - ω²R²/(4g)。其中h为静止液面高度，R为容器半径，ω为角速度。这个关系说明最低点位置随转速升高而下降。'
+            },
+            {
+                keywords: ['R/√2', '根号2', '关键位置', 'x=R', '高度不变', '重要结论'],
+                answer: '核心结论：当 x = R/√2 时，y = h，即该位置液面高度恒等于静止液面高度，与转速无关。这个结论非常重要，它是斜率法测量重力加速度的关键——激光入射点恰好选在 x = R/√2 处，此处液面高度已知为h，便于建立几何关系计算斜率。'
+            },
+            {
+                keywords: ['高度差法', '公式', '怎么测', '测量方法'],
+                answer: '高度差法：测量转轴处液面最低点与容器边缘最高点的高度差Δh。由于最高点在 x=R 处，代入抛物面方程并消去y₀，得到 g = π²n²D² / (720000·Δh)。其中n为转速（r/min），D为圆筒内径（cm），Δh为高度差（cm）。该方法需要测量转速、圆筒内径和最高最低处高度差。'
+            },
+            {
+                keywords: ['斜率法', '激光', '反射', '光点间距', 'd'],
+                answer: '斜率法利用激光反射原理。在圆筒上方平行放置透明水平屏幕，激光平行于转轴入射，打在 x₀=R/√2 的液面A点并反射到C点。设入射光在屏幕上B点，光点间距BC=d，屏幕到桶底距离为H。根据几何关系 tan(2θ) = d/H，可得 θ = ½arctan(d/H)；再结合切线斜率 tanθ = ω²x₀/g，即可求出g。斜率法需要测量转速、圆筒内径、光点间距d、屏幕高度H和静止液面高度h。'
+            },
+            {
+                keywords: ['哪个更精确', '精度', '准确', '比较', '误差'],
+                answer: '斜率法通常比高度差法更准确。高度差法依赖直接读取液面最高与最低点的高度差，目视测量会带来较大误差，尤其是h值对不确定度影响显著。斜率法通过激光反射测量角度，光点间距d可以较精确测量，因此系统误差更小。但斜率法在小角度下角度测量也有较高误差，且重力加速度对角度变化高度敏感，实际操作中要注意激光对准和读数精度。'
+            },
+            {
+                keywords: ['最小二乘法', '线性拟合', 'Origin', '数据处理'],
+                answer: '最小二乘法用于科学处理多组实验数据、减小随机误差。对于高度差法，可将公式改写为 Δh = (π²D²/720000g) · n²，以 n² 为横轴、Δh 为纵轴作图，进行线性拟合。拟合直线的斜率 k = π²D²/(720000g)，由此可求 g。当拟合优度 R² 接近1时，说明数据线性关系良好，实验可靠性高。课堂上可用Origin软件完成数据可视化与拟合。'
+            },
+            {
+                keywords: ['误差来源', '主要误差', '系统误差', '偶然误差'],
+                answer: '主要误差来源包括：①液体黏滞：黏度越大，相对误差越大，盐水比纯水误差大；②仪器水平度：容器未调平会导致液面不对称；③轴承磨损与转速不稳定；④激光光路偏移：斜率法对光路对准要求高；⑤读数误差：高度差法目视读取最高最低点高度差时误差较大；⑥温度影响：液体黏度随温度变化。'
+            },
+            {
+                keywords: ['优化', '改进', '减小误差', '装置改良', '乙醇', '加盖'],
+                answer: '优化建议：①将纯水替换为黏度更低的液体，如稀乙醇溶液，可显著减小黏滞带来的系统误差；②给容器加盖，减少液体挥发导致的液面变化和密度变化；③实验前仔细调平仪器；④选取合适的转速范围，避免液面波动过大；⑤多次测量取平均，用最小二乘法处理数据。课后可自主探究：什么浓度范围内的稀乙醇溶液能使误差最小？'
+            },
+            {
+                keywords: ['量子重力仪', '激光干涉', '绝对重力仪', '前沿'],
+                answer: '以FG5-X激光干涉绝对重力仪为代表的前沿设备，能在真空环境中让质量块自由下落，通过激光干涉仪精确监测下落位置，实现极高精度的重力加速度测量。这启发我们：减小误差的关键在于消除空气阻力、提高时间/位移测量精度、控制环境干扰。这与旋转液体法"规避空气阻力"的核心优势形成呼应，体现了从基础实验到量子精密测量的技术发展脉络。'
+            },
+            {
+                keywords: ['应用', '体重秤', '水平仪', '资源勘探', '防灾减灾'],
+                answer: '重力加速度应用广泛：生活中，电子体重秤根据压力传感器测重力、结合g换算质量；电子水平仪通过分解重力在敏感轴上的分量测倾角。前沿领域，量子重力仪用于资源勘探，捕捉地下密度异常定位油气矿产；还可监测地壳应力变化导致g的微小变化，预测地震、火山等灾害，是防灾减灾的"地下听诊器"。'
+            },
+            {
+                keywords: ['实验目的', '教学目标', '学什么'],
+                answer: '本实验教学目标：①知识目标——理解旋转液体形成抛物面的物理原理，掌握两种测g方法；②能力目标——学会用最小二乘法科学处理数据，培养误差分析思维；③素养目标——体会物理知识在生活与科技领域的广泛应用，感受科教融汇。'
+            },
+            {
+                keywords: ['单摆', '自由落体', '传统方法', '为什么用旋转液体'],
+                answer: '传统单摆法易受空气阻力、悬点摩擦和摆角限制（需<5°）影响；自由落体法受空气阻力、小球形状和计时精度限制。旋转液体法的核心优势在于：液面相对稳定，空气阻力影响可忽略；规避摩擦和摆角误差；模型更贴合理想情况；同时兼具直观性和一定精度。'
+            },
+            {
+                keywords: ['仪器', '器材', '实验装置'],
+                answer: '主要实验器材包括：旋转液体综合实验仪、游标卡尺、转速表、激光器、水平屏幕、水平仪等。旋转液体综合实验仪上有溶液桶、速度调节按钮、电机开关、高低速切换开关、水平标尺等部件。实验前需用水平仪调平装置。'
+            },
+            {
+                keywords: ['布鲁姆', '学情', '教学设计', '分层'],
+                answer: '本课基于布鲁姆认知目标分层设计：低阶认知（记忆、理解、应用）用于夯实圆周运动、微元法、抛物面方程等基础知识，完成规范操作和数据代入计算；高阶认知（分析、评价、创造）用于拆解液体黏滞等系统误差、评价两种测量方案优劣、自主设计实验改进方案。整体实现从基础到创新的阶梯式培养。'
+            }
+        ];
+
+        function setQuestion(text) {
+            document.getElementById('user-question').value = text;
+            askQuestion();
+        }
+
+        function askQuestion() {
+            const input = document.getElementById('user-question');
+            const question = input.value.trim();
+            if (!question) return;
+
+            const chatBox = document.getElementById('chat-box');
+            
+            // Add user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'chat-message chat-user';
+            userDiv.textContent = question;
+            chatBox.appendChild(userDiv);
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Simulate AI thinking
+            setTimeout(() => {
+                const answer = findAnswer(question);
+                const aiDiv = document.createElement('div');
+                aiDiv.className = 'chat-message chat-ai';
+                aiDiv.innerHTML = '<div class="font-medium mb-1">实验助手</div>' + answer;
+                chatBox.appendChild(aiDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 500);
+        }
+
+        function findAnswer(question) {
+            // Simple keyword matching with scoring
+            const q = question.toLowerCase();
+            let bestMatch = null;
+            let bestScore = 0;
+            const minThreshold = 1;
+
+            for (const item of knowledgeBase) {
+                let score = 0;
+                for (const kw of item.keywords) {
+                    if (q.includes(kw.toLowerCase())) {
+                        score += kw.length; // Longer keywords count more
+                    }
+                }
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = item;
+                }
+            }
+
+            if (bestMatch && bestScore >= minThreshold) {
+                return bestMatch.answer;
+            }
+
+            return '这个问题超出了我当前知识库的范围。你可以尝试询问：抛物面形成原理、高度差法/斜率法公式、误差来源、最小二乘法、实验优化、量子重力仪等关键词。或者课后联系老师进一步探讨！';
+        }
+
+        // ==================== Initialization ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            updateVisFromSliders();
+            // Calculate defaults to show results
+            calculateHeightDiff();
+            calculateSlope();
+            calculateFit();
+        });
+    </script>
+</body>
+</html>
